@@ -1,0 +1,9 @@
+Simple script then convert your narod.ru account into personal image hosting. It load images via ftp, make previews and generate links to use. Also it generate albums pages on your narod.ru site.
+This script make narod.ru hosting most useful then it was earlier
+of course,this script can work with any hostings with ftp
+
+Dependence:
+perl
+perl-imagemagick
+ImageMagick
+
