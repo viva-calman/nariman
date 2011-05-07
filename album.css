@@ -1,0 +1,32 @@
+div.main{
+	background:#444444;
+	width:95%;
+	margin:5px;
+	padding:5px;
+}
+div.preview{
+	background:#000044;
+	padding:20px;
+	margin:5px;
+/*	height:150px;*/
+}
+div.preview_pic{
+	float:left;
+	padding:3px;
+	background:#220000;
+}
+body{
+	background:#666666;
+}
+div.title{
+	font-size: 14pt;
+	text-align: center;
+}
+span.links{
+	text-align:left;
+	background:#00ff00;
+	height:auto;
+}
+input.links{
+	width:500px;
+	}
