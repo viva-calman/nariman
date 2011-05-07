@@ -14,15 +14,19 @@ use File::Copy;
 # Image Resize Procedure
 sub image_resize {
 	my $img_name=$_[0];
-	my $preview_name=$img_name;
+	my $img_corrname=$img_name;
+	$img_corrname=~s/\.\.\///g;
+	$img_corrname=~s/\.\///;
+	print $img_name."\n".$img_corrname."\n";
+	my $preview_name=$img_corrname;
 	my $width=$_[1];
 	my $height=$_[2];
 	my $tmp_dir=$_[3]."/";
 	my $unique=$_[4];
-	$preview_name="preview_".$unique.$img_name;	
-	copy($img_name,$tmp_dir.$unique.$img_name) or die "Can not copy file $img_name to temp directory $tmp_dir";
+	$preview_name="preview_".$unique.$img_corrname;	
+	copy($img_name,$tmp_dir.$unique.$img_corrname) or die "Can not copy file $img_name to temp directory $tmp_dir";
 	my $workimage=new Image::Magick;
-	$workimage->read($tmp_dir.$unique.$img_name);
+	$workimage->read($tmp_dir.$unique.$img_corrname);
 	#
 	#Getting work image size
 	#
@@ -51,7 +55,62 @@ sub image_resize {
 
 # Album page generating procedure
 sub album_gen {
+	my $server=$_[1];
+	my $site=$_[0];
+	my $username=$_[2];
+	my $password=$_[3];
+	my $header=$_[4];
+	my $css_path=$_[5];
+	my $album=$_[6];
+	my $tmp_dir=$_[7]."/";
+	# Opening HTML header
+	open(HEAD,$header);
+	my @head=<HEAD>;
+	close (HEAD);
+	open (INDEX,">>$tmp_dir"."index.html");
+	my $ftp=Net::FTP->new($server,Debug=>0) or die "Can not connect";
+	$ftp->login($username,$password) or die "Can not autorize";
+#	print "\nStarting albums (re)generation\n";
+	foreach my $str (@head)
+	{
+		$str=~s/###CSS###/$css_path/;
+		$str=~s/###TITLE###/Album\: $album/g;
+		print INDEX $str;
+	}
+	$ftp->cwd("/albums/$album") or die "Can not change directory";
+	$ftp->delete("index.html");
+	my @dirs=grep(!/preview/,($ftp->ls()));
+	my $i;
+	foreach $i (@dirs)
+	{
+		my $direct_link=$site."/albums/".$album."/".$i;
+		my $preview_link=$site."/albums/".$album."/preview_".$i;
+		my $html_direct="<img src=&quot;".$direct_link."&quot;>";
+		my $html_preview="<a href=&quot;".$direct_link."&quot;><img src=&quot;".$preview_link."&quot;></a>";
+		my $html_preview_pic="<a href=\"".$direct_link."\"><img src=\"".$preview_link."\"></a>";
+		my $bbcode_direct="[img]".$direct_link."[/img]";
+		my $bbcode_preview="[url=&quot;".$direct_link."&quot;][img]".$preview_link."[/img][/url]";
+		my $bbcode_big_preview="[URL=&quot;".$direct_link."&quot;][IMG]".$preview_link."[/IMG][/URL]";
+		my $bbcode_big_direct="[IMG]".$direct_link."[/IMG]";
+		print INDEX "\n<div class=\"preview\">\n\t<div class=\"preview_pic\">\n$html_preview_pic\n</div>";
+		print INDEX "<div class=\"links\">\n\t<table border=0 cellpadding=0 class=\"links\">";
+		print INDEX "<tr><td>Direct link:</td></tr><tr><td><input type=\"text\" value=\"$direct_link\" class=\"links\">\n</td></tr>";
+		print INDEX "<tr><td>HTML direct link:</td></tr><tr><td><input type=\"text\" value=\"$html_direct\" class=\"links\">\n</td></tr>";
+		print INDEX "<tr><td>HTML preview:</td></tr><tr><td><input type=\"text\" value=\"$html_preview\" class=\"links\">\n</td></tr>";
+		print INDEX "<tr><td>BBCode direct link:</td></tr><tr><td><input type=\"text\" value=\"$bbcode_direct\" class=\"links\">\n</td></tr>";
+		print INDEX "<tr><td>BBCode preview:</td></tr><tr><td><input type=\"text\" value=\"$bbcode_preview\" class=\"links\">\n</td></tr>";
+		print INDEX "<tr><td>BBCode direct link (big letters):</td></tr><tr><td><input type=\"text\" value=\"$bbcode_big_direct\" class=\"links\">\n</td></tr>";
+		print INDEX "<tr><td>BBCode preview (big letters):</td></tr><tr><td><input type=\"text\" value=\"$bbcode_big_preview\" class=\"links\">\n</td></tr></table>";
+		print INDEX "</div>\n</div>\n";
+	}
+	print INDEX "<div class=\"preview\"><a href=\"$site/albums\">Back to albums list</a></div>";
+	print INDEX "</div></body></html>";
 
+	close (INDEX);
+#	print "\nPage (re)generating complete\n";
+	$ftp->put($tmp_dir."index.html");
+#	print "New page uploaded\n";
+	$ftp->quit;
 }
 
 # Help view procedure
@@ -65,7 +124,7 @@ sub help_view {
 	print "--create\t-ca\tCreate new album on server\n";
 	print "--delete\t-da\tDelete album on server\n";
 	print "--dir\t\t-d\tLoad all images in directory. This is non-recursive reading!\n";
-	print "";
+	print "--refresh\t\tRefresh albums pages\n";
 	print "Deleting albums or images can not realized. make it manually :-[";
 	print "\n\nThanks for using\n";
 	exit 0;
@@ -73,22 +132,40 @@ sub help_view {
 
 # Synchronizing album list
 sub album_sync{
+	my $tmp=$_[4]."/index.htm";
+	my $css=$_[5];
+	my $head=$_[6];
+	my $site=$_[7];
 	my $ftp=Net::FTP->new($_[0],Debug=>0) or die "Can not connect to $_[0]";
 	$ftp->login($_[1],$_[2]) or die "Can not login";
 	$ftp->cwd("/albums") or die "Can not change directory", $ftp->message;
 	$ftp->put($_[3]) or die "Can not upload file", $ftp->message;;
+	open (HEAD,$head);
+	open (INDEX,">>$tmp");
+	while(<HEAD>)
+	{
+		$_=~s/###CSS###/$css/;
+		$_=~s/###TITLE###/Albums\ list/g;
+		print INDEX $_;
+	
+	}
+	close (HEAD);
 	open (ALBUMLIST, $_[3]);
 	while (<ALBUMLIST>)
 	{
 		if($_=~/^\w/)
 		{
-
+			print INDEX "<div class=\"preview\"><a href=\"$site/albums/";
 			my ($albumname,$albumdesc)=split(/\;/,$_);
+			print INDEX "$albumname/\">$albumname</a>$albumdesc</div>";
 			$ftp->mkdir($albumname); # or die "Can not create directory ", $ftp->message;
 		}
 	}
+	print INDEX "<div class=\"preview\"><a href=\"$site\">Main page</a></div>";
+	print INDEX "</div></body></html>";
+	close (INDEX);
+	$ftp->put($tmp) or die "Can not upload file";
 	close(ALBUMLIST);
-
 	$ftp->quit;
 }
 sub tmp_dir_clear {
@@ -104,7 +181,7 @@ sub tmp_dir_clear {
 		unlink $tmp_dir.$file;
 	}
 	closedir(TMPDIR);
-	print "\nComplete!";
+	print "\nDone!\n";
 }
 
 ##Default variables
@@ -191,7 +268,7 @@ foreach my $argnum (0..$#ARGV)
 			$act=3;
 			my $dir_name=$ARGV[$argnum+1];
 			opendir(IMGDIR,$dir_name) or die "Error to opening directory $dir_name\n";
-			my @files=grep(/\.jpg|\.png|\.gif/,readdir(IMGDIR));
+			my @files=grep(/\.jpg|\.png|\.gif/i,readdir(IMGDIR));
 			closedir(IMGDIR);
 			print @files;
 			while(my ($num,$filename)=each @files)
@@ -206,6 +283,10 @@ foreach my $argnum (0..$#ARGV)
 			exit 1;
 		}
 	}
+	if($ARGV[$argnum] eq '--refresh')
+	{
+		$act=4;
+	}
 	if($ARGV[$argnum])
 	{
 		if($flag==1)
@@ -214,7 +295,7 @@ foreach my $argnum (0..$#ARGV)
 		}
 		else
 		{
-			if($ARGV[$argnum]=~/.*\.png|jpg|gif/ )
+			if($ARGV[$argnum]=~/.*\.png|jpg|gif/i )
 			{
 				$act=3;
 				$imagelist{$imagecount}=$ARGV[$argnum];
@@ -225,6 +306,7 @@ foreach my $argnum (0..$#ARGV)
 }
 if(!$ARGV[0])
 {
+	$act=0;
 	print "NARIMAN v1.0\ntype nariman --help for more information :)\n";
 }
 # Config reading
@@ -239,10 +321,6 @@ while (<CONFIG>)
 	}
 }
 close (CONFIG);
-# while (($optname,$optval)=each %config)
-#{
-#	print "$optname = $optval\n";
-#}
 
 #Adding new Album
 if($act==1)
@@ -253,8 +331,26 @@ if($act==1)
 	print "Add new album";
 	print (ALBUMLIST "$alb_name;$alb_desc\n");
 	close (ALBUMLIST);
-	&album_sync($config{'site'},$config{'username'},$config{'password'},$config{'album_list'});
+	&album_sync($config{'site'},$config{'username'},$config{'password'},$config{'album_list'},$config{'tmp_dir'},$config{'css_path'},$config{'html_head'},$config{'website'});
 	exit 0;
+}
+# Refresh album pages
+if($act==4)
+{
+	open(ALBUMLIST,$config{'album_list'});
+	print "Start album pages refresh\n";
+	while(<ALBUMLIST>)
+	{
+		if($_=~/^\w/)
+		{
+			my ($albumname,$albumdesc)=split(/\;/,$_);
+			print "$albumname...";
+			&album_gen($config{'website'},$config{'site'},$config{'username'},$config{'password'},$config{'html_head'},$config{'css_path'},$albumname,$config{'tmp_dir'});
+			&tmp_dir_clear($config{'tmp_dir'});
+			
+		}
+	}
+	print "\nRefreshing complete\n";
 }
 # Start image preview creating
 if($act==3)
@@ -265,7 +361,7 @@ if($act==3)
 		&image_resize($filename,$config{'width'},$config{'height'},$config{'tmp_dir'},$unique);
 	}
 	print "Sync albums\n";
-	&album_sync($config{'site'},$config{'username'},$config{'password'},$config{'album_list'});
+	&album_sync($config{'site'},$config{'username'},$config{'password'},$config{'album_list'},$config{'tmp_dir'},$config{'css_path'},$config{'html_head'},$config{'website'});
 	print "\nSelect album to upload\n\n";
 	open (ALBUMLIST,$config{'album_list'});
 	print "N\tAlbum name\tAlbum Description\n\n";
@@ -290,8 +386,11 @@ if($act==3)
 	$ftp->binary;
 	while (my ($fileid,$filename)= each %imagelist)
 	{
-		$ftp->put($config{'tmp_dir'}."/".$unique.$filename) or die "Can not upload file", $ftp->message;;
-		$ftp->put($config{'tmp_dir'}."/"."preview_".$unique.$filename) or die "Can not upload file", $ftp->message;;
+		my $corr_filename=$filename;
+		$corr_filename=~s/\.\.\///g;
+		$corr_filename=~s/\.\///;
+		$ftp->put($config{'tmp_dir'}."/".$unique.$corr_filename) or die "Can not upload file", $ftp->message;;
+		$ftp->put($config{'tmp_dir'}."/"."preview_".$unique.$corr_filename) or die "Can not upload file", $ftp->message;;
 	}
 	$ftp->quit;
 
@@ -320,6 +419,9 @@ if($act==3)
 	}
 	$album_address=$config{'website'}."/albums/".$albums{$select}."/";
 	print "Album Address\n$album_address\n";
+	print "\nStarting page (re)generation)\n";
+	&album_gen($config{'website'},$config{'site'},$config{'username'},$config{'password'},$config{'html_head'},$config{'css_path'},$albums{$select},$config{'tmp_dir'});
+	print "\nDone\n";
 	&tmp_dir_clear($config{'tmp_dir'});
 
 }
