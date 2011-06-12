@@ -350,6 +350,8 @@ if($act==4)
 			
 		}
 	}
+	&album_sync($config{'site'},$config{'username'},$config{'password'},$config{'album_list'},$config{'tmp_dir'},$config{'css_path'},$config{'html_head'},$config{'website'});
+
 	print "\nRefreshing complete\n";
 }
 # Start image preview creating
