@@ -17,6 +17,7 @@ sub image_resize {
 	my $img_corrname=$img_name;
 	$img_corrname=~s/\.\.\///g;
 	$img_corrname=~s/\.\///;
+	$img_corrname=~s/^\/.+\///;
 	print $img_name."\n".$img_corrname."\n";
 	my $preview_name=$img_corrname;
 	my $width=$_[1];
@@ -379,6 +380,15 @@ if($act==3)
 	}
 	close(ALBUMLIST);
 	chomp($select=<STDIN>);
+	if ($select=~/\D+/)
+	{
+		$select=1;
+	}
+	if (!$albums{$select})
+	{
+		$select=1;
+	}
+
 #
 # Uploading files via FTP
 #
@@ -391,6 +401,7 @@ if($act==3)
 		my $corr_filename=$filename;
 		$corr_filename=~s/\.\.\///g;
 		$corr_filename=~s/\.\///;
+		$corr_filename=~s/^\/.+\///;
 		$ftp->put($config{'tmp_dir'}."/".$unique.$corr_filename) or die "Can not upload file", $ftp->message;;
 		$ftp->put($config{'tmp_dir'}."/"."preview_".$unique.$corr_filename) or die "Can not upload file", $ftp->message;;
 	}
@@ -400,23 +411,26 @@ if($act==3)
 	print "Your links:\n";
 	while (my ($fileid,$filename)= each %imagelist)
 	{
-	$direct_link=$config{'website'}."/albums/".$albums{$select}."/".$unique.$imagelist{$fileid};
-	$preview_link=$config{'website'}."/albums/".$albums{$select}."/preview_".$unique.$imagelist{$fileid};
-	$html_direct="<img src=\"".$direct_link."\">";
-	$html_preview="<a href=\"".$direct_link."\"><img src=\"".$preview_link."\"></a>";
-	$bbcode_direct="[img]".$direct_link."[/img]";
-	$bbcode_preview="[url=\"".$direct_link."\"][img]".$preview_link."[/img][/url]";
-	$bbcode_big_preview="[URL=\"".$direct_link."\"][IMG]".$preview_link."[/IMG][/URL]";
-	$bbcode_big_direct="[IMG]".$direct_link."[/IMG]";
-	print "================================================================\n";
-	print $imagelist{$fileid}."\n\n";
-	print "Direct link:\n$direct_link\n";
-	print "HTML direct link:\n$html_direct\n";
-	print "HTML preview link:\n$html_preview\n";
-	print "BBCode direct link:\n$bbcode_direct\n";
-	print "BBCode direct link (big lettres):\n$bbcode_big_direct\n";
-	print "BBCode preview link:\n$bbcode_preview\n";
-	print "BBCode preview link (big letters):\n$bbcode_big_preview\n";
+		$filename=~s/\.\.\///g;
+		$filename=~s/\.\///;
+		$filename=~s/^\/.+\///;
+		$direct_link=$config{'website'}."/albums/".$albums{$select}."/".$unique.$imagelist{$fileid};
+		$preview_link=$config{'website'}."/albums/".$albums{$select}."/preview_".$unique.$imagelist{$fileid};
+		$html_direct="<img src=\"".$direct_link."\">";
+		$html_preview="<a href=\"".$direct_link."\"><img src=\"".$preview_link."\"></a>";
+		$bbcode_direct="[img]".$direct_link."[/img]";
+		$bbcode_preview="[url=\"".$direct_link."\"][img]".$preview_link."[/img][/url]";
+		$bbcode_big_preview="[URL=\"".$direct_link."\"][IMG]".$preview_link."[/IMG][/URL]";
+		$bbcode_big_direct="[IMG]".$direct_link."[/IMG]";
+		print "================================================================\n";
+		print $imagelist{$fileid}."\n\n";
+		print "Direct link:\n$direct_link\n";
+		print "HTML direct link:\n$html_direct\n";
+		print "HTML preview link:\n$html_preview\n";
+		print "BBCode direct link:\n$bbcode_direct\n";
+		print "BBCode direct link (big lettres):\n$bbcode_big_direct\n";
+		print "BBCode preview link:\n$bbcode_preview\n";
+		print "BBCode preview link (big letters):\n$bbcode_big_preview\n";
 	
 	}
 	$album_address=$config{'website'}."/albums/".$albums{$select}."/";
